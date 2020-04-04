@@ -2,7 +2,6 @@ extern crate serde;
 
 mod tripletex;
 
-use std::collections::HashSet;
 use std::env;
 use std::ffi::OsString;
 
@@ -56,17 +55,17 @@ fn main() {
             return;
         }
     };
-    let mut groups = HashSet::new();
+
     for m in &ml {
         // println!("{:?}", m);
-        if m.customer_number.len() == 0 {
+        if m.customer_number.is_empty() {
             continue; // Not a member
         }
-        let callsign_start = match m.name.find("(") {
+        let callsign_start = match m.name.find('(') {
             Some(p) => p + 1,
             None => continue,
         };
-        let callsign_end = match m.name.find(")") {
+        let callsign_end = match m.name.find(')') {
             Some(p) => p,
             None => continue,
         };
@@ -79,15 +78,9 @@ fn main() {
             Ok(g) => g,
             Err(_) => continue,
         };
-        groups.insert(group);
-        match translate_group(group) {
-            Some(g) => {
-                print!("{},{:03}\r\n", callsign, g);
-            }
-            None => (),
+
+        if let Some(g) = translate_group(group) {
+            print!("{},{:03}\r\n", callsign, g);
         }
     }
-    let mut groups: Vec<u32> = groups.iter().map(|v| *v).collect();
-    groups.sort();
-    // println!("{:?}", groups);
 }
