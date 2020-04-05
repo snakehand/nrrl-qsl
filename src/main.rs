@@ -2,8 +2,10 @@ extern crate serde;
 
 mod tripletex;
 
-use std::env;
-use std::ffi::OsString;
+use nfd2::Response;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::PathBuf;
 
 // Translate group number code from customer file to QSL sorting code (if valid)
 fn translate_group(group: u32) -> Option<u32> {
@@ -42,13 +44,8 @@ fn translate_group(group: u32) -> Option<u32> {
     }
 }
 
-fn main() {
-    let args: Vec<OsString> = env::args_os().collect();
-    if args.len() < 2 {
-        println!("usage: {} members.csv", args[0].to_string_lossy());
-        return;
-    }
-    let ml = match tripletex::read_members(&args[1]) {
+fn process_file(mut fname: PathBuf) {
+    let ml = match tripletex::read_members(fname.as_os_str()) {
         Ok(d) => d,
         Err(e) => {
             println!("Failed: {:?}", e);
@@ -56,8 +53,8 @@ fn main() {
         }
     };
 
+    let mut result = Vec::new();
     for m in &ml {
-        // println!("{:?}", m);
         if m.customer_number.is_empty() {
             continue; // Not a member
         }
@@ -73,14 +70,32 @@ fn main() {
             continue;
         }
         let callsign = &m.name[callsign_start..callsign_end];
-        // println!("Callsign: {}", callsign);
+
         let group = match m.category_number2.parse::<u32>() {
             Ok(g) => g,
             Err(_) => continue,
         };
 
         if let Some(g) = translate_group(group) {
-            print!("{},{:03}\r\n", callsign, g);
+            let r = format!("{},{:03}\r\n", callsign, g);
+            result.push(r);
         }
     }
+
+    if !result.is_empty() {
+        fname.set_extension("txt");
+        let mut file = File::create(&fname).unwrap();
+        let all = result.join("");
+        file.write_all(all.as_bytes()).unwrap();
+    }
+}
+
+fn main() {
+    let fname = match nfd2::open_file_dialog(None, None).expect("oh no") {
+        Response::Okay(file_path) => file_path,
+        Response::OkayMultiple(_files) => return,
+        Response::Cancel => return,
+    };
+
+    process_file(PathBuf::from(fname));
 }
