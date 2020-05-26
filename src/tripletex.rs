@@ -34,7 +34,7 @@ pub struct Member {
 
 pub fn read_members(filename: &OsStr) -> Result<Vec<Member>, Box<dyn Error>> {
     let file = File::open(filename)?;
-    let mut rdr = csv::Reader::from_reader(file);
+    let mut rdr = csv::ReaderBuilder::new().delimiter(b';').from_reader(file);
     rdr.set_headers(StringRecord::from(vec![
         "customer_number",
         "supplier_number",
