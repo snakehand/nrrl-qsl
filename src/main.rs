@@ -2,7 +2,8 @@ extern crate serde;
 
 mod tripletex;
 
-use nfd2::Response;
+use dialog::DialogBox;
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -44,14 +45,8 @@ fn translate_group(group: u32) -> Option<u32> {
     }
 }
 
-fn process_file(mut fname: PathBuf) {
-    let ml = match tripletex::read_members(fname.as_os_str()) {
-        Ok(d) => d,
-        Err(e) => {
-            println!("Failed: {:?}", e);
-            return;
-        }
-    };
+fn process_file(mut fname: PathBuf) -> Result<(), Box<dyn Error>> {
+    let ml = tripletex::read_members(fname.as_os_str())?;
 
     let mut result = Vec::new();
     for m in &ml {
@@ -84,18 +79,43 @@ fn process_file(mut fname: PathBuf) {
 
     if !result.is_empty() {
         fname.set_extension("txt");
-        let mut file = File::create(&fname).unwrap();
+        let mut file = File::create(&fname)?;
         let all = result.join("");
-        file.write_all(all.as_bytes()).unwrap();
+        file.write_all(all.as_bytes())?;
     }
+
+    Ok(())
 }
 
 fn main() {
-    let fname = match nfd2::open_file_dialog(None, None).expect("oh no") {
-        Response::Okay(file_path) => file_path,
-        Response::OkayMultiple(_files) => return,
-        Response::Cancel => return,
+    let fname = dialog::FileSelection::new("Velg CVS fil med kunde-data")
+        .title("File Selection")
+        .show()
+        .expect("Could not display dialog box");
+
+    let fname = match fname {
+        Some(f) => f,
+        None => {
+            dialog::Message::new(format!("No file selected"))
+                .title("Error")
+                .show()
+                .expect("Could not display dialog box");
+            return;
+        }
     };
 
-    process_file(PathBuf::from(fname));
+    match process_file(PathBuf::from(fname)) {
+        Ok(_) => {
+            dialog::Message::new("The operation was successful.")
+                .title("Success")
+                .show()
+                .expect("Could not display dialog box");
+        }
+        Err(e) => {
+            dialog::Message::new(format!("Operation failed: {:?}", e))
+                .title("Failure")
+                .show()
+                .expect("Could not display dialog box");
+        }
+    }
 }
