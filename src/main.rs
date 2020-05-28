@@ -2,7 +2,11 @@ extern crate serde;
 
 mod tripletex;
 
+#[cfg(linux)]
 use dialog::DialogBox;
+#[cfg(not(linux))]
+use nfd2::Response;
+
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -87,6 +91,7 @@ fn process_file(mut fname: PathBuf) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(linux)]
 fn main() {
     let fname = dialog::FileSelection::new("Velg CVS fil med kunde-data")
         .title("File Selection")
@@ -117,5 +122,19 @@ fn main() {
                 .show()
                 .expect("Could not display dialog box");
         }
+    }
+}
+
+#[cfg(not(linux))]
+fn main() {
+    let fname = match nfd2::open_dialog(None, None, nfd2::DialogType::SingleFile).expect("oh no") {
+        Response::Okay(file_path) => file_path,
+        Response::OkayMultiple(_files) => return,
+        Response::Cancel => return,
+    };
+
+    match process_file(PathBuf::from(fname)) {
+        Ok(_) => {}
+        Err(e) => {}
     }
 }
