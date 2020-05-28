@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 csv = "1.1.3"
 serde = { version = "1.0.105" , features = ["derive"] }
-[target.'cfg(linux)'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 dialog = "0.3.0"
-[target.'cfg(not(linux))'.dependencies]
+[target.'cfg(not(target_os = "linux"))'.dependencies]
 nfd2 = "0.2.1"
